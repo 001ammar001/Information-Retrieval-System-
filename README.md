@@ -1,6 +1,25 @@
 # Information Retrieval (IR) System
 
-A comprehensive Information Retrieval system that provides multiple search methods including TF-IDF, BERT embeddings, hybrid approaches, and topic detection. The system supports query suggestions and text processing capabilities.
+A comprehensive Information Retrieval system that provides multiple search methods including TF-IDF, BERT embeddings, hybrid approaches, and topic detection. The system supports query suggestions and text processing capabilities. 
+
+## 📊 Used Datasets
+
+The system is built and evaluated on the following datasets:
+
+### **ANTIQUE Dataset**
+- **URL**: [https://ir-datasets.com/antique.html#antique/test/non-offensive](https://ir-datasets.com/antique.html#antique/test/non-offensive)
+- **Description**: A non-factoid question answering dataset based on questions and answers from Yahoo! Webscope L6
+- **Documents**: 404K short answer passages from Yahoo Answers
+- **Queries**: Natural language questions from Yahoo Answers
+- **Relevance Levels**: 4-level relevance judgment (1-4, where 4 is most relevant)
+- **Test Set**: 176 queries with 6.6K relevance judgments
+
+### **Quora Dataset**
+- **URL**: [https://ir-datasets.com/beir.html#beir/quora/test](https://ir-datasets.com/beir.html#beir/quora/test)
+- **Description**: Question similarity dataset from Quora platform
+- **Documents**: Question-answer pairs from Quora
+- **Queries**: Natural language questions
+- **Use Case**: Question similarity and duplicate detection
 
 ## 🏗️ System Architecture
 
@@ -176,6 +195,46 @@ GET /get_search_suggestion?data_set_name={dataset}&query={query}
 ```
 GET /process_text?query={query}
 ```
+
+## 🌐 Frontend Web Interface
+
+The system includes a modern, responsive web interface built with HTML, CSS (Tailwind), and JavaScript that provides an intuitive way to interact with the IR system.
+
+### **Features**
+- **Interactive Query Interface**: Easy-to-use form for submitting search queries
+- **Dataset Selection**: Choose between Antique and Quora datasets
+- **Search Method Selection**: Select from TF-IDF, BERT, Hybrid, or Topic Detection
+- **Real-time Query Suggestions**: Auto-complete suggestions as you type
+- **Processed Query Display**: View how your query is processed by the text preprocessing pipeline
+- **Results Visualization**: Clean table display of search results with similarity scores
+- **Responsive Design**: Works on desktop and mobile devices
+
+### **Accessing the Frontend**
+1. Start the Flask server: `python app/main.py`
+2. Open your browser and navigate to: `http://localhost:5000/app.html`
+3. Or access the HTML file directly: `app/html/app.html`
+
+### **Interface Components**
+- **Left Panel**: Query configuration and input
+  - Dataset selection (Antique/Quora)
+  - Processing mode (Main/Secondary features)
+  - Search method selection
+  - Number of results (1-100)
+  - Query input with auto-suggestions
+  - Processed query display button
+
+- **Right Panel**: Results display
+  - Loading indicator
+  - Results table with Document ID, Content, and Similarity Score
+  - Error message display
+  - Processed query preview
+
+### **Key Features**
+- **Auto-suggestions**: Real-time query suggestions using the query suggestion service
+- **Debounced Input**: Prevents excessive API calls while typing
+- **Error Handling**: Graceful error display for network issues or server errors
+- **Responsive Layout**: Adapts to different screen sizes
+- **Modern UI**: Clean, professional interface using Tailwind CSS
 
 ## 🎯 Search Methods
 
