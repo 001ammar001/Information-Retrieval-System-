@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Query Interface</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        /* Custom table styling for better readability */
+        .results-table th, .results-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0; /* gray-200 */
+        }
+        .results-table th {
+            background-color: #e2e8f0; /* gray-200 */
+            font-weight: 600;
+            color: #4a5568; /* gray-700 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        .results-table tbody tr:nth-child(even) {
+            background-color: #f8fafc; /* gray-50 */
+        }
+        .results-table tbody tr:hover {
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+
+        .suggestions-container {
+            position: relative;
+            width: 100%;
+        }
+        .suggestions-list {
+            position: absolute;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            display: none;
+        }
+        .suggestion-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+        .suggestion-item:hover {
+            background-color: #f0f4f8;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-5xl border border-gray-200 flex flex-col md:flex-row gap-8">
+        <!-- Left Column: Input Form -->
+        <div class="md:w-1/3 flex-shrink-0">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Make a Query</h1>
+
+            <form id="queryForm" class="space-y-5">
+                <div>
+                    <label for="dataSetSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                        Select Data Set Name:
+                    </label>
+                    <select id="dataSetSelect" name="data_set_name"
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+                        <option value="antique">Antique</option>
+                        <option value="quora">quora</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="processingModeSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                        Select Processing Mode:
+                    </label>
+                    <select id="processingModeSelect" name="processing_mode"
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+                        <option value="main_feature">Main Feature</option>
+                        <option value="secondary_features">Secondary Features</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="searchMethodSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                        Select Search Method:
+                    </label>
+                    <select id="searchMethodSelect" name="search_method"
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+                        <option value="tfidf">TF-IDF</option>
+                        <option value="bert">BERT</option>
+                        <option value="hybrid">Hybrid</option>
+                        <option value="topicDetection">Topic Detection</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="numResultsInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        Number of Results (1-100):
+                    </label>
+                    <input type="number" id="numResultsInput" name="num_results" min="1" max="100" value="5"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                 <div class="suggestions-container">
+                    <label for="queryInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        Enter Your Query:
+                    </label>
+                    <input type="text" id="queryInput" name="query" placeholder="e.g., find_all_tables" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <div id="suggestionsList" class="suggestions-list"></div>
+                </div>
+
+                <button type="submit"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ease-in-out">
+                    Send Query
+                </button>
+                <button type="button" id="processQueryBtn"
+                        class="w-full flex justify-center py-2 px-4 border border-blue-500 rounded-md shadow-sm text-lg font-medium text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ease-in-out mt-2">
+                    Show Processed Query
+                </button>
+            </form>
+        </div>
+
+        <!-- Right Column: Results Display -->
+        <div class="md:w-2/3 flex-grow p-4 bg-gray-50 rounded-lg border border-gray-100 shadow-inner overflow-auto">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">Query Results</h2>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="hidden text-center mt-5 text-blue-600 font-medium">
+                Processing your query...
+            </div>
+
+            <!-- Processed Query Area -->
+            <div id="processedQueryArea" class="mt-5 p-4 rounded-md text-sm break-words bg-blue-50 border border-blue-200 text-blue-900 hidden">
+                <!-- Processed query will be displayed here -->
+            </div>
+
+            <!-- Response Message Area -->
+            <div id="responseMessage" class="mt-5 p-4 rounded-md text-sm break-words bg-gray-100 border border-gray-300 text-gray-800 hidden">
+                <!-- Response will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const queryForm = document.getElementById('queryForm');
+        const dataSetSelect = document.getElementById('dataSetSelect');
+        const processingModeSelect = document.getElementById('processingModeSelect');
+        const searchMethodSelect = document.getElementById('searchMethodSelect');
+        const queryInput = document.getElementById('queryInput');
+        const numResultsInput = document.getElementById('numResultsInput');
+        const responseMessageDiv = document.getElementById('responseMessage');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const suggestionsList = document.getElementById('suggestionsList');
+        const processedQueryArea = document.getElementById('processedQueryArea');
+        const processQueryBtn = document.getElementById('processQueryBtn');
+        let debounceTimer;
+        const DEBOUNCE_DELAY = 300;
+
+        // Function to display messages (now handles list of documents in a table)
+        function displayMessage(data, isError = false) {
+            responseMessageDiv.classList.remove('hidden');
+            responseMessageDiv.innerHTML = ''; // Clear previous content
+
+            if (isError) {
+                responseMessageDiv.classList.remove('bg-gray-100', 'border-gray-300', 'text-gray-800');
+                responseMessageDiv.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+                // Display error message from Flask as JSON
+                responseMessageDiv.textContent = JSON.stringify(data, null, 2); 
+            } else {
+                responseMessageDiv.classList.remove('bg-red-100', 'border-red-400', 'text-red-700');
+                responseMessageDiv.classList.add('bg-gray-100', 'border-gray-300', 'text-gray-800');
+
+                if (Array.isArray(data) && data.length > 0) {
+                    // If the response is an array of documents
+                    let tableContent = `
+                        <table class="results-table w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th>Document ID</th>
+                                    <th>Content</th>
+                                    <th>Similarity Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    data.forEach(doc => {
+                        if (doc.document_id && doc.content) {
+                            tableContent += `
+                                <tr>
+                                    <td class="break-words">${doc.document_id}</td>
+                                    <td class="break-words">${doc.content}</td>
+                                    <td class="text-center">${doc.similarity_score.toFixed(4)}</td>
+                                </tr>
+                            `;
+                        } else {
+                            // Handle malformed document objects
+                            tableContent += `
+                                <tr>
+                                    <td colspan="3" class="text-red-600">Invalid document format encountered: ${JSON.stringify(doc)}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+                    tableContent += `
+                            </tbody>
+                        </table>
+                    `;
+                    responseMessageDiv.innerHTML = tableContent;
+                } else if (Array.isArray(data) && data.length === 0) {
+                    // No documents found
+                    responseMessageDiv.textContent = 'No documents found for your query.';
+                    responseMessageDiv.classList.add('text-center', 'text-gray-600', 'py-4');
+                }
+                else {
+                    // If the response is not an array (e.g., a simple message or other JSON structure)
+                    responseMessageDiv.textContent = JSON.stringify(data, null, 2);
+                }
+            }
+        }
+
+        queryForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent default form submission
+
+            const data_set_name = dataSetSelect.value;
+            const processing_mode = processingModeSelect.value;
+            const search_method = searchMethodSelect.value;
+            const query = queryInput.value.trim();
+            const num_results = numResultsInput.value;
+
+            // Clear previous messages and show loading
+            responseMessageDiv.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+
+            if (!query) {
+                displayMessage({ error: 'Query cannot be empty.' }, true);
+                loadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            // Construct the URL for your Flask endpoint based on the processing_mode
+            const flaskBaseUrl = 'http://127.0.0.1:5000/get_user_query';
+            const flaskEndpoint = `${flaskBaseUrl}/${encodeURIComponent(processing_mode)}?data_set_name=${encodeURIComponent(data_set_name)}&query=${encodeURIComponent(query)}&method=${encodeURIComponent(search_method)}&top_k=${encodeURIComponent(num_results)}`;
+
+            try {
+                const response = await fetch(flaskEndpoint);
+                const data = await response.json();
+
+                if (response.ok) { // Check if the HTTP status code is 2xx
+                    displayMessage(data, false);
+                } else {
+                    displayMessage(data, true); // Display error message from Flask
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                displayMessage({ error: 'Network error or server unreachable. Please check your Flask app and network connection.' }, true);
+            } finally {
+                loadingIndicator.classList.add('hidden'); // Hide loading indicator regardless of success or failure
+            }
+        });
+
+         async function fetchSearchSuggestions(query, dataSetName) {
+            if (!query || query.length < 2) {
+                suggestionsList.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5000/get_search_suggestion?data_set_name=${encodeURIComponent(dataSetName)}&query=${encodeURIComponent(query)}`);
+                const suggestions = await response.json();
+
+                if (suggestions && suggestions.length > 0) {
+                    suggestionsList.innerHTML = '';
+                    suggestions.forEach(suggestion => {
+                        const suggestionItem = document.createElement('div');
+                        suggestionItem.className = 'suggestion-item';
+                        suggestionItem.textContent = suggestion;
+                        suggestionItem.addEventListener('click', () => {
+                            queryInput.value = suggestion;
+                            suggestionsList.style.display = 'none';
+                        });
+                        suggestionsList.appendChild(suggestionItem);
+                    });
+                    suggestionsList.style.display = 'block';
+                } else {
+                    suggestionsList.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error fetching suggestions:', error);
+                suggestionsList.style.display = 'none';
+            }
+        }
+
+        // Show processed query when button is clicked
+        processQueryBtn.addEventListener('click', async () => {
+            const query = queryInput.value.trim();
+            processedQueryArea.classList.add('hidden');
+            processedQueryArea.textContent = '';
+            if (!query) {
+                processedQueryArea.classList.remove('hidden');
+                processedQueryArea.textContent = 'Query cannot be empty.';
+                return;
+            }
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/process_text?query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                if (response.ok && data.processed_query !== undefined) {
+                    processedQueryArea.classList.remove('hidden');
+                    processedQueryArea.textContent = `Processed Query: ${data.processed_query}`;
+                } else {
+                    processedQueryArea.classList.remove('hidden');
+                    processedQueryArea.textContent = data.error ? data.error : 'Error processing query.';
+                }
+            } catch (error) {
+                processedQueryArea.classList.remove('hidden');
+                processedQueryArea.textContent = 'Network error or server unreachable.';
+            }
+        });
+
+        // Debounce function to limit API calls while typing
+        function debounce(func, delay) {
+            return function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => func.apply(this, arguments), delay);
+            };
+        }
+
+        // Event listener for typing in query input
+        queryInput.addEventListener('input', debounce(() => {
+            const query = queryInput.value.trim();
+            const dataSetName = dataSetSelect.value;
+            fetchSearchSuggestions(query, dataSetName);
+        }, DEBOUNCE_DELAY));
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target !== queryInput) {
+                suggestionsList.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
