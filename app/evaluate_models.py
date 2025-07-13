@@ -131,7 +131,7 @@ class ModelEvaluator:
                 if i == 0: 
                     dcg += (2 ** relevance - 1)
                 else:
-                    dcg += (2 ** relevance - 1) / np.log2(i + 1)  # +2 because log2(1) = 0, so 1-based index + 1
+                    dcg += (2 ** relevance - 1) / np.log2(i + 1)
 
             # Calculate IDCG
             ideal_relevances = sorted([relevance for relevance in query_qrels.values() if relevance > 0], reverse=True)
